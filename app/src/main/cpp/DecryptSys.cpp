@@ -42,5 +42,7 @@ Java_com_example_m1_MainActivity_Decrypt(JNIEnv *env, jobject thiz, jstring Clai
         int_answer |= (ai[i]<<i);
     }
     LOGD("answer is : %d",int_answer);
+    delete_gate_bootstrapping_ciphertext_array(nbit, answer);
+    delete_gate_bootstrapping_secret_keyset(keyset);
     return int_answer;
 }

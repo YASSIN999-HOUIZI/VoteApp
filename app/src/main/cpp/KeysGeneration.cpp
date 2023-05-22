@@ -20,7 +20,7 @@
 #define  LOG_TAG    "TFHE init:"
 #define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
-
+#define W_SIZE 5
 
 
 extern "C"
@@ -52,11 +52,11 @@ Java_com_example_m1_MainActivity_init(JNIEnv *env, jobject thiz, jstring SK_PATH
     tfhe_random_generator_setSeed(seed,3);
     TFheGateBootstrappingSecretKeySet* key = new_random_gate_bootstrapping_secret_keyset(params);
 
-    LweSample* enc_x1 = new_gate_bootstrapping_ciphertext_array(4, params);
-    LweSample* enc_y1 = new_gate_bootstrapping_ciphertext_array(4, params);
-    LweSample* enc_z1 = new_gate_bootstrapping_ciphertext_array(4, params);
-    LweSample* ONE = new_gate_bootstrapping_ciphertext_array(1, params);
-    LweSample* ZERO = new_gate_bootstrapping_ciphertext_array(1, params);
+    LweSample* enc_x1 = new_gate_bootstrapping_ciphertext_array(W_SIZE, params);
+    LweSample* enc_y1 = new_gate_bootstrapping_ciphertext_array(W_SIZE, params);
+    LweSample* enc_z1 = new_gate_bootstrapping_ciphertext_array(W_SIZE, params);
+    LweSample* ONE = new_gate_bootstrapping_ciphertext(params);
+    LweSample* ZERO = new_gate_bootstrapping_ciphertext(params);
 
     FILE* pk_data = fopen(Pk_path,"wb");
     bootsSymEncrypt(ONE,1, key);
@@ -65,22 +65,22 @@ Java_com_example_m1_MainActivity_init(JNIEnv *env, jobject thiz, jstring SK_PATH
     export_gate_bootstrapping_ciphertext_toFile(pk_data, ZERO, params);
     fclose(pk_data);
 
-    for (int i=0; i<4; i++) {
+    for (int i=0; i<W_SIZE; i++) {
         bootsSymEncrypt(&enc_x1[i], (x1>>i)&1, key);
     }
-    for (int i=0; i<4; i++) {
+    for (int i=0; i<W_SIZE; i++) {
         bootsSymEncrypt(&enc_y1[i], (y1>>i)&1, key);
     }
-    for (int i=0; i<4; i++) {
+    for (int i=0; i<W_SIZE; i++) {
         bootsSymEncrypt(&enc_z1[i], (z1>>i)&1, key);
     }
 
     FILE* cloud_data = fopen(CD_path,"wb");
-    for (int i=0; i<4; i++)
+    for (int i=0; i<W_SIZE; i++)
         export_gate_bootstrapping_ciphertext_toFile(cloud_data, &enc_x1[i], params);
-    for (int i=0; i<4; i++)
+    for (int i=0; i<W_SIZE; i++)
         export_gate_bootstrapping_ciphertext_toFile(cloud_data, &enc_y1[i], params);
-    for (int i=0; i<4; i++)
+    for (int i=0; i<W_SIZE; i++)
         export_gate_bootstrapping_ciphertext_toFile(cloud_data, &enc_z1[i], params);
     fclose(cloud_data);
 
@@ -91,6 +91,14 @@ Java_com_example_m1_MainActivity_init(JNIEnv *env, jobject thiz, jstring SK_PATH
     FILE* SK_pt = fopen(Sk_path,"wb");
     export_tfheGateBootstrappingSecretKeySet_toFile(SK_pt,key);
     fclose(SK_pt);
+    delete_gate_bootstrapping_ciphertext_array(W_SIZE, enc_x1);
+    delete_gate_bootstrapping_ciphertext_array(W_SIZE, enc_y1);
+    delete_gate_bootstrapping_ciphertext_array(W_SIZE, enc_z1);
+    delete_gate_bootstrapping_ciphertext(ONE);
+    delete_gate_bootstrapping_ciphertext(ZERO);
+
+    delete_gate_bootstrapping_secret_keyset(key);
+    delete_gate_bootstrapping_parameters(params);
 
     return 1;
 }

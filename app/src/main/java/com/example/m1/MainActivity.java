@@ -4,13 +4,18 @@ import com.example.m1.WebSocketClientEndpoint;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import javax.crypto.SecretKey;
 
@@ -52,11 +57,14 @@ public class MainActivity extends AppCompatActivity {
    public native int init(String SecretKey_Path,String Pk_Path, String CloudKey_Path,String CloudData_Path, int x1, int y1, int z1);
 
     public void verify(View view) throws InterruptedException, ParseException, IOException, ClassNotFoundException {
+        //Start time
+        long begin = System.currentTimeMillis();
         String path = String.valueOf(MainActivity.path);
         int x1=2;
-        int y1=2;
+        int y1=1;
         int z1=1;
         int status = init(SecretKey_Path,Pk_Path,CloudKey_Path,CloudData_Path,x1,y1,z1);
+        //compressFile(path + "/CK.key",path + "/CK_Compressed.key");
         System.out.println("status:"+status);
         ClientEndpoint proofEndpoint = new ClientEndpoint();
         proofEndpoint.createWebSocketClient("ws://" + cppVerifierUrl);
@@ -74,13 +82,56 @@ public class MainActivity extends AppCompatActivity {
         //proofEndpoint.webSocketClient.send("DONE");
         proofEndpoint.latch.await();
         int r = Decrypt(path+"/vot_answer.data", path+"/SK.key",1);
-        int n = Decrypt(path+"/H_NULL.data", path+"/SK.key",4);
+        int n = Decrypt(path+"/H_NULL.data", path+"/SK.key",5);
         System.out.println("r:"+r);
         System.out.println("null:"+n);
         proofEndpoint.webSocketClient.send(String.valueOf(r));
         proofEndpoint.webSocketClient.send(String.valueOf(n));
 
         proofEndpoint.webSocketClient.close();
-    }
+        //End time
+        long end = System.currentTimeMillis();
 
+        long time = end-begin;
+        System.out.println();
+        System.out.println("Elapsed Time: "+time +" milli seconds");
+    }
+    private static final String TAG = "FileCompressionUtil";
+
+    public void compressFile(String inputFile,String outputFile) {
+        //String inputFile = path+"/CK.key";       // Replace with the actual input file path
+        //String outputFile = path+"/CK_Compressed.key";  // Replace with the desired output file path
+
+        try (FileInputStream fis = new FileInputStream(inputFile);
+             FileOutputStream fos = new FileOutputStream(outputFile);
+             GZIPOutputStream gzipOS = new GZIPOutputStream(fos)) {
+
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                gzipOS.write(buffer, 0, bytesRead);
+            }
+
+            Log.d(TAG, "File compressed successfully.");
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public void decompressFile(View view) throws IOException {
+        String outputFile = path+"/CK_Decompressed.key";       // Replace with the actual input file path
+        String compressedFile = path+"/CK_Compressed.key";
+        try (FileInputStream fis = new FileInputStream(compressedFile);
+             GZIPInputStream gzipIS = new GZIPInputStream(fis);
+             FileOutputStream fos = new FileOutputStream(outputFile)) {
+
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = gzipIS.read(buffer)) != -1) {
+                fos.write(buffer, 0, bytesRead);
+            }
+            Log.d(TAG, "File decompressed successfully.");
+
+        }
+    }
 }
